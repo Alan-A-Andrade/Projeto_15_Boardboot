@@ -1,7 +1,7 @@
 import connection from "../db.js";
 import rentalSchema from "../schemas/rentalsSchema.js";
 
-export default async function validateRental(req, res, next) {
+export async function validateRental(req, res, next) {
 
   const validation = rentalSchema.validate(req.body);
 
@@ -59,4 +59,33 @@ export default async function validateRental(req, res, next) {
     res.sendStatus(500)
   }
 
+}
+
+export async function validateCheckOutRental(req, res, next) {
+
+  const { id } = req.params
+
+  try {
+    const rental = await connection.query(`
+  SELECT *
+  FROM rentals
+  WHERE id = $1
+  `, [id])
+
+    if (rental.rowCount === 0) {
+      return res.sendStatus(404)
+    }
+
+    if (rental.rows[0].returnDate !== null) {
+      return res.sendStatus(400)
+    }
+
+    req.locals = rental.rows[0]
+
+    next();
+
+  } catch (error) {
+    console.log(error)
+    res.sendStatus(500)
+  }
 }

@@ -1,19 +1,79 @@
 import connection from "../db.js";
 import dayjs from "dayjs";
 
+export async function getRentals(req, res) {
+
+  try {
+    const rentals = await connection.query(`
+  SELECT rentals.*, 
+  customers.id as "customer_Id", 
+  customers.name as "customer_Name",
+  games.id as "game_Id",
+  games.name as "game_Name",
+  categories.name as "game_CategoryName",
+  categories.id as "game_CategoryId"
+  FROM rentals
+  JOIN customers ON
+  customers.id=rentals."customerId"
+  JOIN games ON
+  games.id=rentals."gameId"
+  JOIN categories ON
+  categories.id=games."categoryId"
+  `)
+
+
+
+    const rentalsFormat = rentals.rows.map((el) => {
+      const entry = {
+        ...el,
+        rentDate: dayjs(el.rentDate).format('YYYY-MM-DD'),
+        customer: {
+          id: el.customer_Id,
+          name: el.customer_Name
+        },
+        game: {
+          id: el.game_Id,
+          name: el.game_Name,
+          categoryId: el.game_CategoryId,
+          categoryName: el.game_CategoryName
+        }
+      }
+
+      delete entry.customer_Id
+      delete entry.customer_Name
+      delete entry.game_CategoryId
+      delete entry.game_CategoryName
+      delete entry.game_Id
+      delete entry.game_Name
+
+      return entry
+    })
+
+    res.send(rentalsFormat)
+
+  } catch (error) {
+
+    res.sendStatus(500)
+
+  }
+
+}
+
 export async function postRentals(req, res) {
 
   const { customerId, gameId, daysRented } = req.body
 
   const rentDate = dayjs().format('YYYY-MM-DD')
 
-  const pricePerDay = await connection.query(`
+
+  try {
+
+    const pricePerDay = await connection.query(`
   SELECT games."pricePerDay"
   FROM games
   WHERE id = $1
   `, [gameId])
 
-  try {
 
     await connection.query(`
     INSERT INTO 
@@ -32,57 +92,64 @@ export async function postRentals(req, res) {
 
   } catch (error) {
 
-    console.log(error)
     res.sendStatus(500)
 
   }
 
 }
 
-export async function getRentals(req, res) {
+export async function returnRental(req, res) {
 
-  const rentals = await connection.query(`
-  SELECT rentals.*, 
-  customers.id as "customer_Id", 
-  customers.name as "customer_Name",
-  games.id as "game_Id",
-  games.name as "game_Name",
-  categories.name as "game_CategoryName",
-  categories.id as "game_CategoryId"
-  FROM rentals
-  JOIN customers ON
-  customers.id=rentals."customerId"
-  JOIN games ON
-  games.id=rentals."gameId"
-  JOIN categories ON
-  categories.id=games."categoryId"
-  `)
+  const { id } = req.params
 
-  const rentalsFormat = rentals.rows.map((el) => {
-    const entry = {
-      ...el,
-      customer: {
-        id: el.customer_Id,
-        name: el.customer_Name
-      },
-      game: {
-        id: el.game_Id,
-        name: el.game_Name,
-        categoryId: el.game_CategoryId,
-        categoryName: el.game_CategoryName
-      }
-    }
+  const returnDate = dayjs().format('YYYY-MM-DD')
 
-    delete entry.customer_Id
-    delete entry.customer_Name
-    delete entry.game_CategoryId
-    delete entry.game_CategoryName
-    delete entry.game_Id
-    delete entry.game_Name
+  const delayDays = dayjs().diff(dayjs(req.locals.rentDate).add(parseInt(req.locals.daysRented), 'day'), 'day')
 
-    return entry
-  })
+  const isDelayed = delayDays > 0
 
-  res.send(rentalsFormat)
+  const pricePerDay = parseInt(req.locals.originalPrice) / parseInt(req.locals.daysRented)
+
+  const delayFee = isDelayed ? parseInt(delayDays) * pricePerDay : 0
+
+
+  try {
+
+    await connection.query(`
+    UPDATE rentals
+    SET "returnDate" = $1,
+        "delayFee" = $2
+    WHERE id = $3`,
+      [returnDate, delayFee, id])
+
+    res.sendStatus(200)
+
+  } catch (error) {
+    console.log(error)
+
+    res.sendStatus(500)
+  }
+
+}
+
+export async function deleteRental(req, res) {
+
+  const { id } = req.params
+
+  try {
+
+
+    await connection.query(`
+    DELETE FROM rentals
+    WHERE id = $1`,
+      [id])
+
+    res.sendStatus(200)
+
+  } catch (error) {
+    console.log(error)
+
+    res.sendStatus(500)
+  }
 
 }
