@@ -25,7 +25,6 @@ export default async function validateRental(req, res, next) {
   `, [gameId])
 
     if (checkGame.rowCount === 0) {
-      console.log("checkgame")
       return res.sendStatus(400)
     }
 
@@ -36,9 +35,23 @@ export default async function validateRental(req, res, next) {
     `, [customerId])
 
     if (checkCustomer.rowCount === 0) {
-      console.log("checkcustumer")
 
       return res.sendStatus(400)
+    }
+
+    const checkAvailability = await connection.query(`
+    SELECT *
+    FROM rentals
+    WHERE "gameId" = $1
+    AND "returnDate" is null
+    `, [gameId])
+
+    const gameStock = checkGame.rows[0].stockTotal
+    const gameRentals = checkAvailability.rowCount
+
+    if (gameStock - gameRentals === 0) {
+      return res.sendStatus(400)
+
     }
 
     next();
