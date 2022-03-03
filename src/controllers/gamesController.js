@@ -2,8 +2,7 @@ import connection from "../db.js";
 
 export async function getGames(req, res) {
 
-  const { name } = req.query
-
+  const { name, limit, offset } = req.query
 
   try {
 
@@ -12,6 +11,8 @@ export async function getGames(req, res) {
       const games = await connection.query(`
         SELECT * 
         FROM games
+        ${offset ? `OFFSET ${parseInt(offset)}` : ``}
+        ${limit ? `LIMIT ${parseInt(limit)}` : ``}
         `)
       res.send(games.rows);
     }
@@ -22,6 +23,8 @@ export async function getGames(req, res) {
         FROM games 
         WHERE LOWER(name) 
         LIKE LOWER($1)
+        ${offset ? `OFFSET ${parseInt(offset)}` : ``}
+        ${limit ? `LIMIT ${parseInt(limit)}` : ``}
         `, [`${name}%`])
 
       res.send(games.rows);

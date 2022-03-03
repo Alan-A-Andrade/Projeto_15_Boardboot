@@ -4,8 +4,7 @@ import changeDate from "../utils/changeDate.js";
 
 export async function getCustomers(req, res) {
 
-  const { cpf } = req.query
-
+  const { cpf, limit, offset } = req.query
 
   try {
 
@@ -14,6 +13,8 @@ export async function getCustomers(req, res) {
       const customers = await connection.query(`
         SELECT * 
         FROM customers
+        ${offset ? `OFFSET ${parseInt(offset)}` : ``}
+        ${limit ? `LIMIT ${parseInt(limit)}` : ``}
         `)
       res.send(changeDate(customers.rows, 'birthday'));
 
@@ -26,6 +27,8 @@ export async function getCustomers(req, res) {
         FROM customers 
         WHERE cpf
         LIKE $1
+        ${offset ? `OFFSET ${parseInt(offset)}` : ``}
+        ${limit ? `LIMIT ${parseInt(limit)}` : ``}
         `, [`${cpf}%`])
 
       res.send(changeDate(customers.rows, 'birthday'));

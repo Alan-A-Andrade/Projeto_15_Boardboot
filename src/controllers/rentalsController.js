@@ -3,6 +3,8 @@ import dayjs from "dayjs";
 
 export async function getRentals(req, res) {
 
+  const { limit, offset } = req.query
+
   try {
     const rentals = await connection.query(`
   SELECT rentals.*, 
@@ -19,6 +21,8 @@ export async function getRentals(req, res) {
   games.id=rentals."gameId"
   JOIN categories ON
   categories.id=games."categoryId"
+  ${offset ? `OFFSET ${parseInt(offset)}` : ``}
+  ${limit ? `LIMIT ${parseInt(limit)}` : ``}
   `)
 
 
@@ -52,7 +56,7 @@ export async function getRentals(req, res) {
     res.send(rentalsFormat)
 
   } catch (error) {
-
+    console.log(error)
     res.sendStatus(500)
 
   }
