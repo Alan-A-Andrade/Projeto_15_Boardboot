@@ -4,7 +4,21 @@ import changeDate from "../utils/changeDate.js";
 
 export async function getCustomers(req, res) {
 
-  const { cpf, limit, offset } = req.query
+  const { cpf, limit, offset, order, desc } = req.query
+
+  let orderTreated = false
+
+  if (order) {
+
+    try {
+      const tableName = await connection.query(`
+    select *
+    from INFORMATION_SCHEMA.COLUMNS
+    where TABLE_NAME='customers'`)
+
+      orderTreated = (tableName.rows.map(el => { return el.column_name }).includes(order))
+    } catch { res.sendStatus(500) }
+  }
 
   try {
 
@@ -15,6 +29,7 @@ export async function getCustomers(req, res) {
         FROM customers
         ${offset ? `OFFSET ${parseInt(offset)}` : ``}
         ${limit ? `LIMIT ${parseInt(limit)}` : ``}
+        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
         `)
       res.send(changeDate(customers.rows, 'birthday'));
 
@@ -29,6 +44,7 @@ export async function getCustomers(req, res) {
         LIKE $1
         ${offset ? `OFFSET ${parseInt(offset)}` : ``}
         ${limit ? `LIMIT ${parseInt(limit)}` : ``}
+        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
         `, [`${cpf}%`])
 
       res.send(changeDate(customers.rows, 'birthday'));

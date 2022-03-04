@@ -2,7 +2,20 @@ import connection from "../db.js";
 
 export async function getGames(req, res) {
 
-  const { name, limit, offset } = req.query
+  const { name, limit, order, offset, desc } = req.query
+  let orderTreated = false
+
+  if (order) {
+
+    try {
+      const tableName = await connection.query(`
+    select *
+    from INFORMATION_SCHEMA.COLUMNS
+    where TABLE_NAME='games'`)
+
+      orderTreated = (tableName.rows.map(el => { return el.column_name }).includes(order))
+    } catch { res.sendStatus(500) }
+  }
 
   try {
 
@@ -11,8 +24,9 @@ export async function getGames(req, res) {
       const games = await connection.query(`
         SELECT * 
         FROM games
-        ${offset ? `OFFSET ${parseInt(offset)}` : ``}
-        ${limit ? `LIMIT ${parseInt(limit)}` : ``}
+        ${offset ? `OFFSET ${parseInt(offset)}` : ""}
+        ${limit ? `LIMIT ${parseInt(limit)}` : ""}
+        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
         `)
       res.send(games.rows);
     }
@@ -25,13 +39,14 @@ export async function getGames(req, res) {
         LIKE LOWER($1)
         ${offset ? `OFFSET ${parseInt(offset)}` : ``}
         ${limit ? `LIMIT ${parseInt(limit)}` : ``}
+        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
         `, [`${name}%`])
 
       res.send(games.rows);
     }
 
-  } catch {
-
+  } catch (error) {
+    console.log(error)
     res.sendStatus(500)
 
   }

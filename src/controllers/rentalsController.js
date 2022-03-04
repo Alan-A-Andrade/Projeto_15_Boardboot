@@ -3,7 +3,42 @@ import dayjs from "dayjs";
 
 export async function getRentals(req, res) {
 
-  const { limit, offset } = req.query
+  const { customerId, gameId, limit, offset, order, desc, status, startDate } = req.query
+  let orderTreated = false, statusTreated = false, statusQuery = '', startDateTreated = false;
+
+  if (order) {
+
+    try {
+      const tableName = await connection.query(`
+    select *
+    from INFORMATION_SCHEMA.COLUMNS
+    where TABLE_NAME='rentals'`)
+
+      orderTreated = (tableName.rows.map(el => { return el.column_name }).includes(order))
+    } catch { res.sendStatus(500) }
+  }
+
+  if (status) {
+    switch (status) {
+      case "open":
+        statusTreated = true;
+        statusQuery = 'WHERE "returnDate" is null'
+        break;
+      case "closed":
+        statusTreated = true;
+        statusQuery = 'WHERE "returnDate" is not null'
+        break;
+      default:
+        statusTreated = false;
+        statusQuery = ''
+        break;
+    }
+  }
+
+  if (startDate) {
+    let regexDate = /^\d{4}\-(0[1-9]|1[012])\-(0[1-9]|[12][0-9]|3[01])$/
+    startDateTreated = regexDate.test(startDate)
+  }
 
   try {
     const rentals = await connection.query(`
@@ -21,11 +56,14 @@ export async function getRentals(req, res) {
   games.id=rentals."gameId"
   JOIN categories ON
   categories.id=games."categoryId"
-  ${offset ? `OFFSET ${parseInt(offset)}` : ``}
-  ${limit ? `LIMIT ${parseInt(limit)}` : ``}
+  ${customerId ? `WHERE customers.id = ${parseInt(customerId)}` : ""}
+  ${gameId ? `WHERE games.id = ${parseInt(gameId)}` : ""}
+  ${offset ? `OFFSET ${parseInt(offset)}` : ""}
+  ${limit ? `LIMIT ${parseInt(limit)}` : ""}
+  ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
+  ${statusTreated ? statusQuery : ""}
+  ${startDateTreated ? `WHERE "rentDate" >= CAST('${startDate}' AS DATE )` : ""}
   `)
-
-
 
     const rentalsFormat = rentals.rows.map((el) => {
       const entry = {
@@ -156,4 +194,49 @@ export async function deleteRental(req, res) {
     res.sendStatus(500)
   }
 
+}
+
+export async function getRentalsMetrics(req, res) {
+
+  const { startDate, endDate } = req.query
+  const filterDateQuery = (startDate || endDate)
+
+  let dateQueryString = ""
+
+  if (!startDate && !endDate) {
+    dateQueryString = ""
+  }
+  else if (startDate && !endDate) {
+    dateQueryString = `WHERE "rentDate" >= CAST('${startDate}' AS DATE )`
+  }
+  else if (!startDate && endDate) {
+    dateQueryString = `WHERE "rentDate" <= CAST('${endDate}' AS DATE )`
+  }
+  else {
+    dateQueryString = `WHERE "rentDate" BETWEEN CAST('${startDate}' AS DATE) AND CAST('${endDate}' AS DATE )`
+  }
+
+
+
+  try {
+    const sum = await connection.query(`
+  SELECT
+  SUM("originalPrice" + "delayFee") revenue,
+  COUNT(id) rentals
+  FROM rentals 
+  ${dateQueryString}
+  `)
+
+    const metrics = {
+      ...sum.rows[0],
+      revenue: parseInt(sum.rows[0].revenue),
+      rentals: parseInt(sum.rows[0].rentals),
+      average: parseInt(sum.rows[0].revenue / sum.rows[0].rentals)
+    }
+
+    res.send(metrics)
+  } catch (error) {
+    console.log(error)
+    res.sendStatus(500)
+  }
 }
