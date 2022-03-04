@@ -19,31 +19,22 @@ export async function getGames(req, res) {
 
   try {
 
-    if (!name) {
 
-      const games = await connection.query(`
-        SELECT * 
+    const games = await connection.query(`
+        SELECT games.*,
+        COUNT(rentals.id) "rentCount" 
         FROM games
-        ${offset ? `OFFSET ${parseInt(offset)}` : ""}
-        ${limit ? `LIMIT ${parseInt(limit)}` : ""}
-        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
-        `)
-      res.send(games.rows);
-    }
-
-    else {
-      const games = await connection.query(`
-        SELECT * 
-        FROM games 
-        WHERE LOWER(name) 
-        LIKE LOWER($1)
+        LEFT JOIN rentals ON games.id=rentals."gameId" 
+        ${name ? `WHERE LOWER(name) LIKE LOWER($1)` : ""}
         ${offset ? `OFFSET ${parseInt(offset)}` : ``}
         ${limit ? `LIMIT ${parseInt(limit)}` : ``}
         ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
-        `, [`${name}%`])
+        GROUP BY games.id
+        `, name ? [`${name}%`] : null)
 
-      res.send(games.rows);
-    }
+
+    res.send(games.rows);
+
 
   } catch (error) {
     console.log(error)

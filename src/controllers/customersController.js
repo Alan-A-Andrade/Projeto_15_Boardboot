@@ -22,36 +22,23 @@ export async function getCustomers(req, res) {
 
   try {
 
-    if (!cpf) {
-
-      const customers = await connection.query(`
-        SELECT * 
-        FROM customers
-        ${offset ? `OFFSET ${parseInt(offset)}` : ``}
-        ${limit ? `LIMIT ${parseInt(limit)}` : ``}
-        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
-        `)
-      res.send(changeDate(customers.rows, 'birthday'));
-
-    }
-
-    else {
-
-      const customers = await connection.query(`
-        SELECT * 
+    const customers = await connection.query(`
+        SELECT customers.*,
+        COUNT(rentals.id) "rentCount" 
         FROM customers 
-        WHERE cpf
-        LIKE $1
+        LEFT JOIN rentals ON customers.id=rentals."customerId" 
+        ${cpf ? `WHERE cpf LIKE $1` : ""}
         ${offset ? `OFFSET ${parseInt(offset)}` : ``}
         ${limit ? `LIMIT ${parseInt(limit)}` : ``}
         ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
-        `, [`${cpf}%`])
+        GROUP BY customers.id
+        `, cpf ? [`${cpf}%`] : null)
 
-      res.send(changeDate(customers.rows, 'birthday'));
-    }
+    res.send(changeDate(customers.rows, 'birthday'));
 
-  } catch {
 
+  } catch (error) {
+    console.log(error)
     res.sendStatus(500)
 
   }
