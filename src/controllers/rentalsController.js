@@ -15,7 +15,9 @@ export async function getRentals(req, res) {
     where TABLE_NAME='rentals'`)
 
       orderTreated = (tableName.rows.map(el => { return el.column_name }).includes(order))
-    } catch { res.sendStatus(500) }
+    } catch {
+      res.sendStatus(500)
+    }
   }
 
   if (status) {
@@ -50,25 +52,32 @@ export async function getRentals(req, res) {
   categories.name as "game_CategoryName",
   categories.id as "game_CategoryId"
   FROM rentals
-  JOIN customers ON
-  customers.id=rentals."customerId"
-  JOIN games ON
-  games.id=rentals."gameId"
-  JOIN categories ON
-  categories.id=games."categoryId"
+  JOIN customers ON customers.id=rentals."customerId"
+  JOIN games ON games.id=rentals."gameId"
+  JOIN categories ON categories.id=games."categoryId"
   ${customerId ? `WHERE customers.id = ${parseInt(customerId)}` : ""}
   ${gameId ? `WHERE games.id = ${parseInt(gameId)}` : ""}
-  ${offset ? `OFFSET ${parseInt(offset)}` : ""}
-  ${limit ? `LIMIT ${parseInt(limit)}` : ""}
-  ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
   ${statusTreated ? statusQuery : ""}
   ${startDateTreated ? `WHERE "rentDate" >= CAST('${startDate}' AS DATE )` : ""}
+  ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
+  ${offset ? `OFFSET ${parseInt(offset)}` : ""}
+  ${limit ? `LIMIT ${parseInt(limit)}` : ""}
   `)
 
     const rentalsFormat = rentals.rows.map((el) => {
+
+      const {
+        customer_Id,
+        customer_Name,
+        game_CategoryId,
+        game_CategoryName,
+        game_Id, game_Name,
+        ...rest } = el
+
       const entry = {
-        ...el,
+        ...rest,
         rentDate: dayjs(el.rentDate).format('YYYY-MM-DD'),
+        returnDate: el.returnDate && dayjs(el.returnDate).format('YYYY-MM-DD'),
         customer: {
           id: el.customer_Id,
           name: el.customer_Name
@@ -81,20 +90,12 @@ export async function getRentals(req, res) {
         }
       }
 
-      delete entry.customer_Id
-      delete entry.customer_Name
-      delete entry.game_CategoryId
-      delete entry.game_CategoryName
-      delete entry.game_Id
-      delete entry.game_Name
-
       return entry
     })
 
     res.send(rentalsFormat)
 
-  } catch (error) {
-    console.log(error)
+  } catch {
     res.sendStatus(500)
 
   }
@@ -132,7 +133,7 @@ export async function postRentals(req, res) {
 
     res.sendStatus(201)
 
-  } catch (error) {
+  } catch {
 
     res.sendStatus(500)
 
@@ -166,8 +167,7 @@ export async function returnRental(req, res) {
 
     res.sendStatus(200)
 
-  } catch (error) {
-    console.log(error)
+  } catch {
 
     res.sendStatus(500)
   }
@@ -188,9 +188,7 @@ export async function deleteRental(req, res) {
 
     res.sendStatus(200)
 
-  } catch (error) {
-    console.log(error)
-
+  } catch {
     res.sendStatus(500)
   }
 
@@ -235,8 +233,7 @@ export async function getRentalsMetrics(req, res) {
     }
 
     res.send(metrics)
-  } catch (error) {
-    console.log(error)
+  } catch {
     res.sendStatus(500)
   }
 }

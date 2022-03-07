@@ -22,22 +22,23 @@ export async function getGames(req, res) {
 
     const games = await connection.query(`
         SELECT games.*,
-        COUNT(rentals.id) "rentCount" 
+        COUNT(rentals.id) "rentCount", 
+        categories.name AS "categoryName"
         FROM games
-        LEFT JOIN rentals ON games.id=rentals."gameId" 
-        ${name ? `WHERE LOWER(name) LIKE LOWER($1)` : ""}
+        LEFT JOIN rentals ON games.id=rentals."gameId"
+        JOIN categories ON games."categoryId"=categories.id
+        ${name ? `WHERE LOWER(games.name) LIKE LOWER($1)` : ""}
+        GROUP BY games.id, categories.name
+        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
         ${offset ? `OFFSET ${parseInt(offset)}` : ``}
         ${limit ? `LIMIT ${parseInt(limit)}` : ``}
-        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
-        GROUP BY games.id
         `, name ? [`${name}%`] : null)
 
 
     res.send(games.rows);
 
 
-  } catch (error) {
-    console.log(error)
+  } catch {
     res.sendStatus(500)
 
   }
@@ -59,9 +60,8 @@ export async function postGames(req, res) {
 
     res.sendStatus(201)
 
-  } catch (error) {
+  } catch {
 
-    console.log(error)
     res.sendStatus(500)
 
   }

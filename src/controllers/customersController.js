@@ -28,17 +28,17 @@ export async function getCustomers(req, res) {
         FROM customers 
         LEFT JOIN rentals ON customers.id=rentals."customerId" 
         ${cpf ? `WHERE cpf LIKE $1` : ""}
+        GROUP BY customers.id
+        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : "ORDER BY id"}
         ${offset ? `OFFSET ${parseInt(offset)}` : ``}
         ${limit ? `LIMIT ${parseInt(limit)}` : ``}
-        ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
-        GROUP BY customers.id
         `, cpf ? [`${cpf}%`] : null)
 
     res.send(changeDate(customers.rows, 'birthday'));
 
 
-  } catch (error) {
-    console.log(error)
+  } catch {
+
     res.sendStatus(500)
 
   }
@@ -84,9 +84,8 @@ export async function postCustomer(req, res) {
 
     res.sendStatus(201)
 
-  } catch (error) {
+  } catch {
 
-    console.log(error)
     res.sendStatus(500)
 
   }

@@ -84,8 +84,7 @@ export async function validateCheckOutRental(req, res, next) {
 
     next();
 
-  } catch (error) {
-    console.log(error)
+  } catch {
     res.sendStatus(500)
   }
 }

@@ -4,7 +4,6 @@ import connection from "../db.js";
 
 export async function validateNewClient(req, res, next) {
 
-
   const validation = customersSchema.validate(req.body);
 
   if (validation.error) {

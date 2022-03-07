@@ -10,9 +10,10 @@ export async function getCategories(req, res) {
 
     try {
       const tableName = await connection.query(`
-    select *
-    from INFORMATION_SCHEMA.COLUMNS
-    where TABLE_NAME='categories'`)
+    SELECT *
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME='categories'
+    `)
 
       orderTreated = (tableName.rows.map(el => { return el.column_name }).includes(order))
     } catch { res.sendStatus(500) }
@@ -24,17 +25,15 @@ export async function getCategories(req, res) {
     const categories = await connection.query(`
     SELECT * 
     FROM categories
+    ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
     ${offset ? `OFFSET ${parseInt(offset)}` : ``}
     ${limit ? `LIMIT ${parseInt(limit)}` : ``}
-    ${orderTreated ? `ORDER BY "${order}" ${desc ? 'DESC' : 'ASC'}` : ""}
     `)
 
     res.send(categories.rows);
 
   } catch {
-
     res.sendStatus(500)
-
   }
 }
 
